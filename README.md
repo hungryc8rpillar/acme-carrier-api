@@ -2,7 +2,10 @@
 
 Inbound carrier sales API for the HappyRobot take-home. FastAPI + SQLite, deployed to Fly.io. The HappyRobot voice agent calls this service during a carrier call to search loads, verify the carrier against FMCSA, negotiate price, and post the call summary.
 
-Live URL (once deployed): `https://acme-carrier-api.fly.dev`
+**Live API:** `https://acme-carrier-api.fly.dev`
+- [`/health`](https://acme-carrier-api.fly.dev/health) — liveness check (public)
+- [`/docs`](https://acme-carrier-api.fly.dev/docs) — interactive OpenAPI / Swagger UI (public)
+- All other endpoints require `X-API-Key` header (provided in the submission email)
 
 ## Endpoints
 
