@@ -111,6 +111,8 @@ Designed for v1.1 (listed here so reviewers can see the product thinking): repea
 
 **Defensive coercion at LLM boundaries.** During build and testing, the same class of bug appeared seven times: empty strings or unexpected types reaching Pydantic from the LLM-driven enrichment chain (e.g., `final_price: ""` when the agent didn't book, `carrier_eligible: ""` from a downstream classifier). The pattern fix isn't catching each bug one-by-one — it's recognizing that every nullable field at an LLM→API boundary needs the same defensive shape: a `mode="before"` validator that coerces empty strings, blank strings, and obvious sentinels to `None` before type validation runs. Implemented uniformly across [app/models.py](app/models.py) for numerics, datetimes, and bools. New nullable fields get the same treatment by default.
 
+Further architectural reasoning — including the boundary-type bug class, the decoupled-robustness principle, the negotiation noise design, and the dashboard-specific build decisions — is documented in DECISIONS.md, the working engineering log from the build.
+
 ## Security
 
 - `X-API-Key` (long random, generated via `secrets.token_urlsafe(32)`). 401 otherwise.
