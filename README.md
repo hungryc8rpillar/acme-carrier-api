@@ -39,7 +39,24 @@ uv run uvicorn app.main:app --reload
 curl -H "X-API-Key: $API_KEY" 'http://localhost:8000/loads/search?origin=Atlanta&limit=2'
 ```
 
+## Run with Docker
+
+```bash
+docker build -t acme-carrier-api .
+docker run --rm -p 8000:8000 \
+  -e API_KEY=$API_KEY \
+  -e FMCSA_API_KEY=$FMCSA_API_KEY \
+  -e ENABLE_DOCS=true \
+  -e DB_PATH=/data/app.db \
+  -v $(pwd)/data:/data \
+  acme-carrier-api
+```
+
+`DB_PATH=/data/app.db` points the app at the mounted volume so the SQLite DB persists in `./data/app.db` on the host (matching the Fly.io layout). Drop the `-v` flag and the `DB_PATH` override for an ephemeral container (e.g., for tests).
+
 ## Tests
+
+69 unit + integration tests, all passing. The pyramid is intentional: heavy on pure-function unit tests for the negotiation decision table (every branch covered with a row), integration coverage on the FMCSA client (mocked HTTP, real cache layer) and the idempotency contract on `/calls/events`, and no end-to-end tests (HappyRobot platform is the integration surface, and the platform is not available as a test harness).
 
 ```bash
 uv run pytest -q
@@ -91,6 +108,8 @@ Designed for v1.1 (listed here so reviewers can see the product thinking): repea
 **Rolling seed dates.** Seed loads use rolling dates — on each container startup, all pickup/delivery dates are computed relative to current UTC, ensuring loads always appear in the near-future window. This makes the system reproducible for reviewers testing days or weeks after submission. Mirrors how real load boards (DAT, Truckstop) maintain live load offers as time-relative postings. Implementation lives in [app/db.py](app/db.py): the JSON template stays anchored to a fixed reference date (readable diffs), and on boot the loads table is wiped and re-inserted with a `today - reference_date` offset applied to every datetime. `call_events` and `fmcsa_cache` are left untouched.
 
 **Two-writes pattern on `/calls/events`.** The HappyRobot workflow posts the same `call_id` twice: a partial write from the `transfer_to_rep` tool *mid-call* (the dashboard's earliest booking signal — `outcome`, `load_id`, `final_price`, `mc_number`, `transfer_attempted`) and a fuller write from the *post-call* enrichment chain (accurate `started_at`/`ended_at`, `duration_seconds`, transcript and recording URLs, AI-classified `sentiment`, extracted `summary`, `negotiation_rounds`). The endpoint does an UPSERT keyed on `call_id` and only overwrites columns that the current request explicitly sent — so the post-call enrichment cannot null out a mid-call value by omitting it. HappyRobot's variable picker does not expose a call-start timestamp at mid-call tool-call time, so `started_at` is optional in the request schema and defaults to server-side UTC `now()`; the post-call write overwrites it with the authoritative timestamp.
+
+**Defensive coercion at LLM boundaries.** During build and testing, the same class of bug appeared seven times: empty strings or unexpected types reaching Pydantic from the LLM-driven enrichment chain (e.g., `final_price: ""` when the agent didn't book, `carrier_eligible: ""` from a downstream classifier). The pattern fix isn't catching each bug one-by-one — it's recognizing that every nullable field at an LLM→API boundary needs the same defensive shape: a `mode="before"` validator that coerces empty strings, blank strings, and obvious sentinels to `None` before type validation runs. Implemented uniformly across [app/models.py](app/models.py) for numerics, datetimes, and bools. New nullable fields get the same treatment by default.
 
 ## Security
 
