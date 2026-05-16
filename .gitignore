@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+build/
+dist/
+.coverage
+.coverage.*
+htmlcov/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+.envrc
+
+# Database — never commit
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.db-journal
+
+# Snapshots
+scripts/snapshots/*.json
+
+# Fly.io
+.fly/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Decision log — committed separately after cleanup pass
+00_decision_log.md
