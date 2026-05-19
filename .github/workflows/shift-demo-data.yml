@@ -1,0 +1,21 @@
+name: Shift demo data +24h
+
+# Keeps the demo dashboard looking "today" by shifting all call_events
+# timestamps forward 24h each night. See scripts/shift_call_events.py.
+#
+# 23:00 UTC ≈ 01:00 Berlin in summer (CEST, UTC+2).
+# In winter (CET, UTC+1) this fires at 00:00 Berlin instead — accepted drift.
+
+on:
+  schedule:
+    - cron: "0 23 * * *"
+  workflow_dispatch:
+
+jobs:
+  shift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl ssh console -a acme-carrier-api -C "python /app/scripts/shift_call_events.py 24"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
